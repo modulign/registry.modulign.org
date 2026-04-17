@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<!-- ============================================================ -->
+<!-- MODULIGN REGISTRY v1.0.0                                     -->
+<!-- Live public interface for the Modulign Standard v3.0 registry-->
+<!-- © 2026 Vincent Gonzalez | modulign.org                       -->
+<!-- ============================================================  -->
+<!--                                                               -->
+<!-- WORKFLOW STACK:                                               -->
+<!-- 1. Boot: load fonts, set STATE, bind all event listeners      -->
+<!-- 2. loadStats() — fetch registry summary counts               -->
+<!-- 3. loadSources() — populate sidebar source list              -->
+<!-- 4. loadObservations(true) — first page of results            -->
+<!-- 5. All further loads are filter/search/pagination driven      -->
+<!--                                                               -->
+<!-- ASSET MANIFEST:                                               -->
+<!-- - Google Fonts: IBM Plex Mono + IBM Plex Sans (remote)       -->
+<!-- - Supabase REST API: kzjyokiiygryzlxbqwjv.supabase.co        -->
+<!-- - No other external dependencies                             -->
+<!--                                                               -->
+<!-- BOOT ORDER:                                                   -->
+<!-- 1. DOMContentLoaded → boot()                                 -->
+<!-- 2. boot() → loadStats(), loadSources(), loadObservations()   -->
+<!-- 3. Filter/search events bind after DOM ready                 -->
+<!-- ============================================================  -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Modulign Registry — live public interface for the Modulign Standard v3.0 dimensional address grammar for observable reality.">
+<meta property="og:title" content="Modulign Registry">
+<meta property="og:description" content="12,000+ classified observations. 561 evidence-grade records. 9 live sensor sources. The Reality Graph, live.">
+<meta property="og:url" content="https://registry.modulign.org">
+<title>Modulign Registry</title>
+
+<!-- Modulign Standard v3.0 — © 2026 Vincent Gonzalez -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+
+<style>
+/* ── Reset + root ─────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:       #0c0d0f;
+  --bg2:      #111316;
+  --bg3:      #171a1e;
+  --bg4:      #1e2227;
+  --border:   rgba(255,255,255,0.07);
+  --border2:  rgba(255,255,255,0.12);
+  --border3:  rgba(255,255,255,0.18);
+  --text:     #e8e4dc;
+  --text2:    #9a9690;
+  --text3:    #5a5652;
+  --accent:   #c9a84c;
+  --accent2:  rgba(201,168,76,0.35);
+  --accent3:  rgba(201,168,76,0.18);
+  --evid:     #4a8c6a;
+  --evid-bg:  rgba(74,140,106,0.15);
+  --evid-bd:  rgba(74,140,106,0.4);
+  --alrt:     #c9874c;
+  --alrt-bg:  rgba(201,135,76,0.15);
+  --alrt-bd:  rgba(201,135,76,0.4);
+  --hot:      #ff9010;
+  --hot-bg:   #361800;
+  --hot-bd:   #603000;
+  --new-c:    #5080c0;
+  --new-bg:   #08182e;
+  --new-bd:   #183050;
+  --mono:     'DM Mono', 'JetBrains Mono', monospace;
+  --sans:     'DM Sans', system-ui, sans-serif;
+  --radius:   4px;
+}
+
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:14px;
+  line-height:1.5;
+  min-height:100vh;
+}
+
+/* ── Scrollbars ──────────────────────────────────────────── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--border3)}
+
+/* ── Header ──────────────────────────────────────────────── */
+.header{
+  position:sticky;top:0;z-index:100;
+  background:var(--bg);
+  border-bottom:1px solid var(--border);
+  padding:0 20px;
+  height:52px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.logo{
+  font-family:'Playfair Display',Georgia,serif;font-size:17px;font-weight:500;
+  letter-spacing:0.04em;color:var(--text);text-decoration:none;
+}
+.logo em{font-style:normal;color:var(--accent)}
+.logo-sub{
+  font-family:var(--mono);font-size:9px;
+  color:var(--text3);letter-spacing:2px;
+  margin-top:2px;
+}
+.logo-version{
+  font-family:var(--mono);font-size:9px;letter-spacing:0.18em;
+  color:var(--text3);text-transform:uppercase;
+  border:1px solid var(--border2);padding:2px 7px;border-radius:2px;
+  margin-left:10px;vertical-align:middle;
+}
+.header-right{display:flex;align-items:center;gap:16px}
+.live-badge{
+  display:flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:11px;color:var(--text2);
+  border:1px solid var(--border2);
+  padding:3px 8px;border-radius:var(--radius);
+  background:var(--bg2);
+}
+.pulse-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--evid);
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.spec-link{
+  font-family:var(--mono);font-size:11px;
+  color:var(--text2);text-decoration:none;
+  border:1px solid var(--border);
+  padding:3px 8px;border-radius:var(--radius);
+  transition:border-color .15s,color .15s;
+}
+.spec-link:hover{border-color:var(--accent2);color:var(--accent)}
+
+/* ── Stats bar ───────────────────────────────────────────── */
+.stats-bar{
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  padding:10px 20px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(90px,1fr));
+  gap:1px;
+}
+.stat{text-align:center;padding:4px 8px}
+.stat-val{
+  font-family:var(--mono);font-size:20px;font-weight:500;
+  color:var(--accent);display:block;line-height:1.2;
+}
+.stat-val.v-evid{color:var(--evid)}
+.stat-val.v-alrt{color:var(--alrt)}
+.stat-val.v-rel{color:#8090c0}
+.stat-lbl{
+  font-size:9px;color:var(--text3);
+  text-transform:uppercase;letter-spacing:1.5px;
+  margin-top:3px;display:block;font-family:var(--mono);
+}
+
+/* ── Layout ──────────────────────────────────────────────── */
+.layout{
+  display:grid;
+  grid-template-columns:240px 1fr;
+  height:calc(100vh - 52px - 61px);
+  overflow:hidden;
+}
+.sidebar{
+  background:var(--bg2);
+  border-right:1px solid var(--border);
+  overflow-y:auto;
+  display:flex;flex-direction:column;
+}
+.main{overflow-y:auto;padding:0}
+
+/* ── Sidebar panels ──────────────────────────────────────── */
+.panel{border-bottom:1px solid var(--border)}
+.panel-head{
+  padding:8px 14px;
+  font-family:var(--mono);font-size:10px;font-weight:500;
+  color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;
+  background:var(--bg3);
+  border-bottom:1px solid var(--border);
+}
+.panel-body{padding:10px 14px}
+
+/* Search */
+.search-box{
+  width:100%;
+  padding:7px 10px;
+  background:var(--bg3);
+  border:1px solid var(--border2);
+  color:var(--text);
+  font-family:var(--mono);font-size:12px;
+  border-radius:var(--radius);
+  outline:none;
+  transition:border-color .15s;
+}
+.search-box:focus{border-color:var(--accent2)}
+.search-box::placeholder{color:var(--text3)}
+
+/* Filter groups */
+.filter-lbl{
+  font-size:10px;color:var(--text3);font-family:var(--mono);
+  text-transform:uppercase;letter-spacing:1px;
+  margin-bottom:5px;display:block;
+}
+.filter-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.fb{
+  padding:2px 7px;
+  font-size:10px;font-family:var(--mono);
+  border:1px solid var(--border2);
+  border-radius:var(--radius);
+  background:transparent;
+  color:var(--text2);
+  cursor:pointer;
+  transition:all .12s;
+  white-space:nowrap;
+}
+.fb:hover{border-color:var(--accent2);color:var(--accent)}
+.fb.on{background:var(--accent2);border-color:var(--accent);color:var(--accent)}
+.fb.on-evid{background:var(--evid-bg);border-color:var(--evid-bd);color:var(--evid)}
+.fb.on-alrt{background:var(--alrt-bg);border-color:var(--alrt-bd);color:var(--alrt)}
+
+/* Source list */
+.src-list{}
+.src-row{
+  padding:6px 14px;
+  display:flex;align-items:center;gap:8px;
+  cursor:pointer;transition:background .1s;
+  border-left:2px solid transparent;
+}
+.src-row:hover{background:var(--bg3)}
+.src-row.active{background:var(--bg3);border-left-color:var(--accent)}
+.src-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.src-name{
+  font-family:var(--mono);font-size:10px;
+  color:var(--text);flex:1;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.src-n{font-family:var(--mono);font-size:10px;color:var(--text3)}
+
+/* ── Tab bar ─────────────────────────────────────────────── */
+.tab-bar{
+  display:flex;
+  border-bottom:1px solid var(--border);
+  background:var(--bg2);
+  position:sticky;top:0;z-index:10;
+}
+.tab{
+  padding:10px 16px;
+  font-family:var(--mono);font-size:11px;
+  color:var(--text2);
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .12s;
+  white-space:nowrap;
+}
+.tab:hover{color:var(--text)}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ── Results header ──────────────────────────────────────── */
+.results-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;
+  border-bottom:1px solid var(--border);
+  background:var(--bg2);
+  gap:8px;flex-wrap:wrap;
+}
+.results-count{
+  font-family:var(--mono);font-size:11px;color:var(--text2);
+  white-space:nowrap;
+}
+.sort-sel{
+  background:var(--bg3);
+  border:1px solid var(--border2);
+  color:var(--text2);
+  font-family:var(--mono);font-size:10px;
+  padding:3px 7px;border-radius:var(--radius);
+  outline:none;cursor:pointer;
+}
+
+/* ── Observation cards ───────────────────────────────────── */
+.obs-list{padding:8px 12px}
+
+.obs-card{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  margin-bottom:5px;
+  cursor:pointer;
+  transition:border-color .12s;
+  overflow:hidden;
+}
+.obs-card:hover{border-color:var(--border2)}
+.obs-card.open{border-color:var(--accent2)}
+
+.obs-top{
+  padding:9px 12px;
+  display:flex;align-items:flex-start;gap:8px;
+}
+.obs-badge{
+  font-family:var(--mono);font-size:9px;font-weight:500;
+  padding:2px 6px;border-radius:2px;
+  background:var(--bg3);color:var(--text2);
+  border:1px solid var(--border2);
+  flex-shrink:0;margin-top:1px;white-space:nowrap;
+}
+.obs-code{
+  font-family:var(--mono);font-size:11px;
+  color:var(--accent);
+  word-break:break-all;line-height:1.6;flex:1;
+  min-width:0;
+}
+.obs-flags{display:flex;gap:3px;flex-shrink:0;flex-wrap:wrap;margin-top:1px}
+.flag{
+  font-size:8px;font-family:var(--mono);font-weight:500;
+  padding:1px 5px;border-radius:2px;letter-spacing:.5px;
+  white-space:nowrap;
+}
+.f-EVID{background:var(--evid-bg);color:var(--evid);border:1px solid var(--evid-bd)}
+.f-ALRT{background:var(--alrt-bg);color:var(--alrt);border:1px solid var(--alrt-bd)}
+.f-HOT{background:var(--hot-bg);color:var(--hot);border:1px solid var(--hot-bd)}
+.f-NEW{background:var(--new-bg);color:var(--new-c);border:1px solid var(--new-bd)}
+
+.obs-meta{
+  padding:0 12px 8px;
+  display:flex;gap:10px;flex-wrap:wrap;
+}
+.omk{font-size:9px;color:var(--text3);font-family:var(--mono)}
+.omk span{color:var(--text2)}
+
+.obs-detail{
+  display:none;
+  padding:10px 12px;
+  border-top:1px solid var(--border);
+  background:var(--bg3);
+}
+.obs-detail.open{display:block}
+
+.conf-wrap{margin-bottom:8px}
+.conf-lbl{
+  font-family:var(--mono);font-size:9px;color:var(--text3);
+  margin-bottom:3px;display:flex;justify-content:space-between;
+}
+.conf-track{
+  height:2px;background:var(--bg4);border-radius:1px;overflow:hidden;
+}
+.conf-fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--accent2),var(--accent));
+  border-radius:1px;
+}
+
+.dr{display:flex;gap:8px;margin-bottom:3px;font-family:var(--mono);font-size:10px}
+.dk{color:var(--text3);min-width:100px;flex-shrink:0}
+.dv{color:var(--text);word-break:break-all}
+.dv-evid{color:var(--evid);font-size:9px}
+
+/* ── Relation cards ──────────────────────────────────────── */
+.rel-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius);padding:9px 12px;margin-bottom:5px;
+}
+.rel-type-badge{
+  display:inline-block;
+  font-family:var(--mono);font-size:9px;font-weight:500;
+  padding:1px 6px;border-radius:2px;margin-right:6px;
+}
+.rt-CNT{background:#08183a;color:#4080c8;border:1px solid #183060}
+.rt-SEQ{background:#0e2010;color:#50a040;border:1px solid #204018}
+.rt-CAU{background:#280808;color:#c05040;border:1px solid #481818}
+
+.rel-conf{font-family:var(--mono);font-size:9px;color:var(--text3)}
+.rel-ids{
+  font-family:var(--mono);font-size:9px;color:var(--text3);
+  margin-top:4px;word-break:break-all;line-height:1.6;
+}
+.rel-note{
+  font-family:var(--mono);font-size:10px;color:var(--text2);
+  margin-top:5px;line-height:1.5;
+}
+
+/* ── Entity cards ────────────────────────────────────────── */
+.ent-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius);padding:9px 12px;margin-bottom:5px;
+  display:flex;align-items:center;gap:10px;
+}
+.ent-type{
+  font-family:var(--mono);font-size:9px;font-weight:500;
+  padding:1px 6px;border-radius:2px;flex-shrink:0;
+}
+.et-STR{background:#0e1828;color:#5080b0;border:1px solid #1a3050}
+.et-ORG{background:#1a1228;color:#9060c0;border:1px solid #2a1848}
+.ent-id{
+  font-family:var(--mono);font-size:10px;color:var(--text);
+  flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.ent-refs{font-family:var(--mono);font-size:9px;color:var(--text3);flex-shrink:0}
+
+/* ── Load more / empty ───────────────────────────────────── */
+.load-more{
+  text-align:center;padding:14px;
+  font-family:var(--mono);font-size:11px;color:var(--text3);
+  cursor:pointer;transition:color .12s;
+}
+.load-more:hover{color:var(--accent)}
+.empty-state{
+  text-align:center;padding:40px 20px;
+  font-family:var(--mono);font-size:12px;color:var(--text3);
+}
+
+/* ── Section label ───────────────────────────────────────── */
+.section-note{
+  font-family:var(--mono);font-size:10px;color:var(--text3);
+  padding:8px 12px;line-height:1.5;
+  border-bottom:1px solid var(--border);
+  background:var(--bg);
+}
+
+/* ── Tab content ─────────────────────────────────────────── */
+.tab-pane{display:none}
+.tab-pane.on{display:block}
+
+/* ── end header ──────────────────────────────────────────── */
+
+/* ── Footer ──────────────────────────────────────────────── */
+.footer{
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  padding:10px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-family:var(--mono);font-size:10px;color:var(--text3);
+  flex-wrap:wrap;gap:8px;
+}
+.footer a{color:var(--text3);text-decoration:none}
+.footer a:hover{color:var(--accent)}
+
+/* ── Mobile responsive ───────────────────────────────────── */
+@media(max-width:700px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .stats-bar{grid-template-columns:repeat(4,1fr)}
+  .stat-val{font-size:15px}
+  .header-right .spec-link{display:none}
+}
+</style>
+</head>
+
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div>
+    <a href="https://modulign.org" class="logo" target="_blank">MOD<em>U</em>LIGN</a><span class="logo-version">Registry · v3.0</span>
+    <div class="logo-sub">DAG-OR v3.0 — DIMENSIONAL ADDRESS GRAMMAR FOR OBSERVABLE REALITY</div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="pulse-dot"></div>
+      <span>LIVE</span>
+    </div>
+    <a href="https://modulign.org" class="spec-link" target="_blank">modulign.org ↗</a>
+  </div>
+</header>
+
+<!-- Stats bar -->
+<div class="stats-bar">
+  <div class="stat"><span class="stat-val" id="sTotal">—</span><span class="stat-lbl">Classifications</span></div>
+  <div class="stat"><span class="stat-val v-evid" id="sEvid">—</span><span class="stat-lbl">^EVID</span></div>
+  <div class="stat"><span class="stat-val v-alrt" id="sAlrt">—</span><span class="stat-lbl">^ALRT</span></div>
+  <div class="stat"><span class="stat-val v-rel" id="sRel">—</span><span class="stat-lbl">Relations</span></div>
+  <div class="stat"><span class="stat-val" id="sEnt">—</span><span class="stat-lbl">Entities</span></div>
+  <div class="stat"><span class="stat-val" id="sNodes">—</span><span class="stat-lbl">Nodes</span></div>
+  <div class="stat"><span class="stat-val" id="sSrc">9</span><span class="stat-lbl">IoT Sources</span></div>
+  <div class="stat"><span class="stat-val" style="font-size:12px;color:var(--text2)">VID·SEN·TXT</span><span class="stat-lbl">Media Types</span></div>
+</div>
+
+<!-- Main layout -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+
+    <div class="panel">
+      <div class="panel-head">Search</div>
+      <div class="panel-body">
+        <input class="search-box" id="searchInput" type="text" placeholder="MGN code, location..." autocomplete="off">
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Filters</div>
+      <div class="panel-body">
+        <span class="filter-lbl">Domain</span>
+        <div class="filter-row" id="domainBtns">
+          <button class="fb on" data-v="">All</button>
+          <button class="fb" data-v="NAT">NAT</button>
+          <button class="fb" data-v="URB">URB</button>
+          <button class="fb" data-v="TRN">TRN</button>
+        </div>
+        <span class="filter-lbl">Realm</span>
+        <div class="filter-row" id="realmBtns">
+          <button class="fb on" data-v="">All</button>
+          <button class="fb" data-v="SR">SR</button>
+          <button class="fb" data-v="OR">OR</button>
+        </div>
+        <span class="filter-lbl">Scale</span>
+        <div class="filter-row" id="scaleBtns">
+          <button class="fb on" data-v="">All</button>
+          <button class="fb" data-v="BIO">BIO</button>
+          <button class="fb" data-v="HMN">HMN</button>
+          <button class="fb" data-v="GEO">GEO</button>
+          <button class="fb" data-v="CSM">CSM</button>
+        </div>
+        <span class="filter-lbl">Medium</span>
+        <div class="filter-row" id="mediumBtns">
+          <button class="fb on" data-v="">All</button>
+          <button class="fb" data-v="SEN">SEN</button>
+          <button class="fb" data-v="VID">VID</button>
+          <button class="fb" data-v="TXT">TXT</button>
+        </div>
+        <span class="filter-lbl">Flags</span>
+        <div class="filter-row">
+          <button class="fb" id="evidBtn">^EVID</button>
+          <button class="fb" id="alrtBtn">^ALRT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="flex:1">
+      <div class="panel-head">IoT Sources</div>
+      <div id="srcList" class="src-list"></div>
+    </div>
+
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <div class="tab on" data-pane="obs">Observations</div>
+      <div class="tab" data-pane="evid">^EVID Records</div>
+      <div class="tab" data-pane="rels">Relations</div>
+      <div class="tab" data-pane="ents">Entities</div>
+    </div>
+
+    <!-- Observations pane -->
+    <div class="tab-pane on" id="pane-obs">
+      <div class="results-head">
+        <span class="results-count" id="obsCount">Loading...</span>
+        <select class="sort-sel" id="sortSel">
+          <option value="classified_at">Recent first</option>
+          <option value="confidence">Confidence ↓</option>
+          <option value="domain">Domain A→Z</option>
+        </select>
+      </div>
+      <div class="obs-list" id="obsList"></div>
+      <div class="load-more" id="loadMoreBtn" style="display:none">Load more →</div>
+    </div>
+
+    <!-- EVID pane -->
+    <div class="tab-pane" id="pane-evid">
+      <div class="section-note" id="evidNote">Loading evidence-grade records...</div>
+      <div class="obs-list" id="evidList"></div>
+    </div>
+
+    <!-- Relations pane -->
+    <div class="tab-pane" id="pane-rels">
+      <div class="section-note" id="relsNote">Loading relation registry...</div>
+      <div class="obs-list" id="relsList"></div>
+    </div>
+
+    <!-- Entities pane -->
+    <div class="tab-pane" id="pane-ents">
+      <div class="section-note" id="entsNote">Loading entity registry...</div>
+      <div class="obs-list" id="entsList"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+  <span>© 2026 Vincent Gonzalez &nbsp;·&nbsp; Independent Scholar &nbsp;·&nbsp; <a href="https://modulign.org" target="_blank">modulign.org</a></span>
+  <span>
+    Modulign Standard v3.0 &nbsp;·&nbsp;
+    <a href="https://doi.org/10.5281/zenodo.19348703" target="_blank">DOI: 10.5281/zenodo.19348703</a>
+  </span>
+</footer>
+
+<script>
+// ============================================================
+// MODULIGN REGISTRY v1.0.0
+// © 2026 Vincent Gonzalez | modulign.org
+// ============================================================
+//
+// WORKFLOW STACK:
+// 1. STATE — single source of truth for all UI state
+// 2. api() — thin Supabase REST wrapper
+// 3. boot() — init on DOMContentLoaded
+// 4. loadStats(), loadSources() — sidebar data
+// 5. loadObs(reset) — main observation list
+// 6. loadEvid(), loadRels(), loadEnts() — tab panes
+// 7. All filter/sort/search events update STATE and call loadObs(true)
+// ============================================================
+
+var SUPA_URL = 'https://kzjyokiiygryzlxbqwjv.supabase.co';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6anlva2lpeWdyeXpseGJxd2p2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NTUwODYsImV4cCI6MjA5MDQzMTA4Nn0.S-fUJNL7Sux_WN3Vt7bd86_xhd1tgKtEVGffK1J2CBM';
+
+// WRITES: —  READS: SUPA_URL, SUPA_KEY
+var H = {
+  'apikey': SUPA_KEY,
+  'Authorization': 'Bearer ' + SUPA_KEY,
+  'Content-Type': 'application/json'
+};
+
+// Single mutable STATE object
+var STATE = {
+  domain:   '',
+  realm:    '',
+  scale:    '',
+  medium:   '',
+  evidOnly: false,
+  alrtOnly: false,
+  search:   '',
+  sort:     'classified_at',
+  source:   '',
+  offset:   0,
+  pageSize: 25,
+  records:  [],
+  evidLoaded: false,
+  relsLoaded: false,
+  entsLoaded: false
+};
+
+var SRC_COLORS = {
+  USGS_EQ:      '#d84020',
+  USGS_EQ_SIG:  '#ff5030',
+  NOAA_NDBC:    '#2870b0',
+  NOAA_TIDES:   '#00a0c0',
+  NASA_EONET:   '#b05800',
+  NOAA_SWPC:    '#7030b0',
+  USGS_WATER:   '#1888a0',
+  AIRNOW_AQI:   '#508820',
+  USGS_VOLCANO: '#c07020'
+};
+
+// ── Core API call ─────────────────────────────────────────
+// READS: SUPA_URL, H
+function api(path, qs) {
+  // Wraps fetch to Supabase REST with error handling
+  return fetch(SUPA_URL + '/rest/v1/' + path + (qs || ''), {headers: H})
+    .then(function(r) {
+      if (!r.ok) throw new Error('API ' + r.status);
+      return r.json();
+    })
+    .catch(function(err) {
+      console.error('api:', err);
+      return null;
+    });
+}
+
+// ── Flag HTML ─────────────────────────────────────────────
+function flagsHTML(flags) {
+  if (!flags || !flags.length) return '';
+  return flags.map(function(f) {
+    return '<span class="flag f-' + f + '">^' + f + '</span>';
+  }).join('');
+}
+
+// ── Observation card HTML ─────────────────────────────────
+function obsHTML(r) {
+  var flags = r.meta_flags || [];
+  var conf  = Math.round((r.confidence || 0) * 100);
+  var dt    = r.classified_at
+    ? r.classified_at.slice(0, 19).replace('T', ' ')
+    : '—';
+  var src   = (r.reasoning_record && r.reasoning_record.source)
+    ? r.reasoning_record.source
+    : '';
+  var geo   = [r.realm, r.g1, r.g2, r.g3, r.g4].filter(Boolean).join('/');
+  return '<div class="obs-card" onclick="toggleObs(this)">' +
+    '<div class="obs-top">' +
+      '<span class="obs-badge">' + r.domain + '&middot;' + r.subdomain + '</span>' +
+      '<span class="obs-code">' + (r.canonical_code || '—') + '</span>' +
+      '<div class="obs-flags">' + flagsHTML(flags) + '</div>' +
+    '</div>' +
+    '<div class="obs-meta">' +
+      '<span class="omk">realm&middot;<span>' + (r.realm||'—') + '</span></span>' +
+      '<span class="omk">scale&middot;<span>' + (r.scale||'—') + '</span></span>' +
+      '<span class="omk">med&middot;<span>' + (r.medium||'—') + '</span></span>' +
+      '<span class="omk">obs&middot;<span>:' + (r.observer_level||'?') + '</span></span>' +
+      '<span class="omk">act&middot;<span>.' + (r.activity_state||'?') + '</span></span>' +
+      '<span class="omk">conf&middot;<span>' + conf + '%</span></span>' +
+      (src ? '<span class="omk">src&middot;<span>' + src + '</span></span>' : '') +
+    '</div>' +
+    '<div class="obs-detail">' +
+      '<div class="conf-wrap">' +
+        '<div class="conf-lbl"><span>confidence</span><span>' + conf + '%</span></div>' +
+        '<div class="conf-track"><div class="conf-fill" style="width:' + conf + '%"></div></div>' +
+      '</div>' +
+      '<div class="dr"><span class="dk">gsi_id</span><span class="dv">' + (r.gsi_id||'—') + '</span></div>' +
+      '<div class="dr"><span class="dk">geo</span><span class="dv">' + geo + '</span></div>' +
+      '<div class="dr"><span class="dk">node</span><span class="dv">' + (r.node_code||'—') + '</span></div>' +
+      '<div class="dr"><span class="dk">classified</span><span class="dv">' + dt + '</span></div>' +
+      (r.time_iso ? '<div class="dr"><span class="dk">time_iso</span><span class="dv">' + r.time_iso.slice(0,19).replace('T',' ') + '</span></div>' : '') +
+      (flags.indexOf('EVID') > -1 ?
+        '<div class="dr"><span class="dk">^EVID chain</span><span class="dv dv-evid">entry_sig · prev_sig cryptographic chain · observer_level :A verified</span></div>' : '') +
+    '</div>' +
+  '</div>';
+}
+
+// READS: —  WRITES: —
+function toggleObs(card) {
+  var d = card.querySelector('.obs-detail');
+  var nowOpen = !d.classList.contains('open');
+  d.classList.toggle('open', nowOpen);
+  card.classList.toggle('open', nowOpen);
+}
+
+// ── Build query string from STATE ─────────────────────────
+// READS: STATE
+function buildQ() {
+  var q = '?select=gsi_id,canonical_code,domain,subdomain,realm,g1,g2,g3,g4,' +
+    'node_code,scale,medium,observer_level,activity_state,confidence,' +
+    'meta_flags,classified_at,time_iso,reasoning_record' +
+    '&is_current=eq.true';
+  if (STATE.domain)   q += '&domain=eq.'   + STATE.domain;
+  if (STATE.realm)    q += '&realm=eq.'    + STATE.realm;
+  if (STATE.scale)    q += '&scale=eq.'    + STATE.scale;
+  if (STATE.medium)   q += '&medium=eq.'   + STATE.medium;
+  if (STATE.evidOnly) q += '&meta_flags=cs.{EVID}';
+  if (STATE.alrtOnly) q += '&meta_flags=cs.{ALRT}';
+  if (STATE.search)   q += '&canonical_code=ilike.*' + encodeURIComponent(STATE.search) + '*';
+  q += '&order=' + STATE.sort + '.desc';
+  q += '&offset=' + STATE.offset + '&limit=' + STATE.pageSize;
+  return q;
+}
+
+// ── Load observations ─────────────────────────────────────
+// READS: STATE  WRITES: STATE.records, STATE.offset
+function loadObs(reset) {
+  if (reset) { STATE.offset = 0; STATE.records = []; }
+  document.getElementById('obsCount').textContent = 'Loading...';
+
+  api('mgn_classifications', buildQ())
+    .then(function(data) {
+      if (!data) {
+        document.getElementById('obsCount').textContent = 'Error loading data';
+        return;
+      }
+      STATE.records = reset ? data : STATE.records.concat(data);
+      STATE.offset += data.length;
+
+      var el = document.getElementById('obsList');
+      if (STATE.records.length === 0) {
+        el.innerHTML = '<div class="empty-state">no records match the current filters</div>';
+      } else {
+        el.innerHTML = STATE.records.map(obsHTML).join('');
+      }
+
+      document.getElementById('obsCount').textContent =
+        STATE.records.length + (data.length === STATE.pageSize ? '+' : '') + ' records';
+      document.getElementById('loadMoreBtn').style.display =
+        data.length === STATE.pageSize ? 'block' : 'none';
+    });
+}
+
+// ── Load stats bar ────────────────────────────────────────
+function loadStats() {
+  // READS: —  WRITES: DOM
+  var queries = [
+    api('mgn_classifications', '?select=count&is_current=eq.true&limit=1'),
+    api('mgn_classifications', '?select=count&is_current=eq.true&meta_flags=cs.{EVID}&limit=1'),
+    api('mgn_classifications', '?select=count&is_current=eq.true&meta_flags=cs.{ALRT}&limit=1'),
+    api('mgn_relations',       '?select=count&limit=1'),
+    api('mgn_entities',        '?select=count&limit=1'),
+    api('mgn_nodes',           '?select=count&limit=1'),
+  ];
+  Promise.all(queries).then(function(results) {
+    var ids = ['sTotal','sEvid','sAlrt','sRel','sEnt','sNodes'];
+    results.forEach(function(r, i) {
+      if (r && r[0] && r[0].count !== undefined) {
+        document.getElementById(ids[i]).textContent =
+          Number(r[0].count).toLocaleString();
+      }
+    });
+  });
+}
+
+// ── Load sources sidebar ──────────────────────────────────
+// READS: —  WRITES: DOM, STATE.source
+function loadSources() {
+  api('mgn_sensor_sources', '?select=source_id,display_name&is_active=eq.true')
+    .then(function(data) {
+      if (!data) return;
+      var html = '<div class="src-row active" data-src="" onclick="filterSrc(this,\'\')">' +
+        '<div class="src-dot" style="background:var(--accent)"></div>' +
+        '<span class="src-name">all sources</span>' +
+        '</div>';
+      data.forEach(function(s) {
+        var col = SRC_COLORS[s.source_id] || 'var(--text3)';
+        html += '<div class="src-row" data-src="' + s.source_id + '" onclick="filterSrc(this,\'' + s.source_id + '\')">' +
+          '<div class="src-dot" style="background:' + col + '"></div>' +
+          '<span class="src-name">' + s.source_id.toLowerCase() + '</span>' +
+          '</div>';
+      });
+      document.getElementById('srcList').innerHTML = html;
+    });
+}
+
+// READS: —  WRITES: STATE.source
+function filterSrc(el, src) {
+  STATE.source = src;
+  document.querySelectorAll('.src-row').forEach(function(r) {
+    r.classList.remove('active');
+  });
+  el.classList.add('active');
+  loadObs(true);
+}
+
+// ── Load ^EVID pane ───────────────────────────────────────
+function loadEvid() {
+  // READS: STATE.evidLoaded  WRITES: STATE.evidLoaded, DOM
+  if (STATE.evidLoaded) return;
+  STATE.evidLoaded = true;
+  api('mgn_classifications',
+    '?select=gsi_id,canonical_code,domain,subdomain,realm,g1,g2,g3,g4,' +
+    'node_code,scale,medium,observer_level,activity_state,confidence,' +
+    'meta_flags,classified_at,time_iso,reasoning_record' +
+    '&is_current=eq.true&meta_flags=cs.{EVID}&order=confidence.desc&limit=100')
+    .then(function(data) {
+      if (!data) { document.getElementById('evidNote').textContent = 'Error loading ^EVID records'; return; }
+      document.getElementById('evidNote').textContent =
+        data.length + ' evidence-grade records — observer_level :A, ISO timestamp verified, cryptographic chain active';
+      document.getElementById('evidList').innerHTML =
+        data.length ? data.map(obsHTML).join('') : '<div class="empty-state">no ^EVID records</div>';
+    });
+}
+
+// ── Load relations pane ───────────────────────────────────
+function loadRels() {
+  // READS: STATE.relsLoaded  WRITES: STATE.relsLoaded, DOM
+  if (STATE.relsLoaded) return;
+  STATE.relsLoaded = true;
+  api('mgn_relations',
+    '?select=relation_id,id_a,relation_type,id_b,confidence,evidence_notes' +
+    '&order=relation_type.asc&limit=200')
+    .then(function(data) {
+      if (!data) { document.getElementById('relsNote').textContent = 'Error loading relations'; return; }
+      document.getElementById('relsNote').textContent =
+        data.length + ' relations — CNT (contemporaneous co-location), SEQ (temporal sequence), CAU (causal candidate)';
+
+      // Group by type
+      var groups = {};
+      data.forEach(function(r) {
+        if (!groups[r.relation_type]) groups[r.relation_type] = [];
+        groups[r.relation_type].push(r);
+      });
+
+      var html = '';
+      Object.keys(groups).forEach(function(type) {
+        var recs = groups[type];
+        var avgConf = (recs.reduce(function(a, r) { return a + (r.confidence || 0); }, 0) / recs.length).toFixed(2);
+        html += '<div style="padding:8px 12px 4px;border-bottom:1px solid var(--border);' +
+          'font-family:var(--mono);font-size:10px;color:var(--text2);background:var(--bg)">' +
+          '<span class="rel-type-badge rt-' + type + '">' + type + '</span>' +
+          recs.length + ' relations &nbsp;·&nbsp; avg confidence ' + avgConf +
+          '</div>';
+        recs.slice(0, 10).forEach(function(r) {
+          html += '<div style="padding:8px 12px">' +
+            '<div class="rel-card">' +
+              '<span class="rel-type-badge rt-' + r.relation_type + '">' + r.relation_type + '</span>' +
+              '<span class="rel-conf">conf ' + r.confidence + '</span>' +
+              '<div class="rel-ids">' + r.id_a + ' &rarr; ' + r.id_b + '</div>' +
+              (r.evidence_notes ? '<div class="rel-note">' + r.evidence_notes.slice(0, 160) + '...</div>' : '') +
+            '</div>' +
+          '</div>';
+        });
+        if (recs.length > 10) {
+          html += '<div style="padding:4px 12px 8px;font-family:var(--mono);font-size:10px;color:var(--text3)">' +
+            '...and ' + (recs.length - 10) + ' more ' + type + ' relations</div>';
+        }
+      });
+      document.getElementById('relsList').innerHTML = html || '<div class="empty-state">no relations</div>';
+    });
+}
+
+// ── Load entities pane ────────────────────────────────────
+function loadEnts() {
+  // READS: STATE.entsLoaded  WRITES: STATE.entsLoaded, DOM
+  if (STATE.entsLoaded) return;
+  STATE.entsLoaded = true;
+  api('mgn_entities',
+    '?select=eid,entity_type,scope,label,reference_count&order=reference_count.desc&limit=100')
+    .then(function(data) {
+      if (!data) { document.getElementById('entsNote').textContent = 'Error loading entities'; return; }
+      document.getElementById('entsNote').textContent =
+        data.length + ' registered entities — STR (geographic structures), ORG (monitoring organisations)';
+      document.getElementById('entsList').innerHTML = data.length
+        ? data.map(function(e) {
+            return '<div style="padding:4px 12px"><div class="ent-card">' +
+              '<span class="ent-type et-' + e.entity_type + '">' + e.entity_type + '</span>' +
+              '<span class="ent-id" title="' + e.eid + '">' + e.eid + '</span>' +
+              '<span class="ent-refs">' + e.reference_count + ' refs</span>' +
+              '</div></div>';
+          }).join('')
+        : '<div class="empty-state">no entities</div>';
+    });
+}
+
+// ── Filter group binding ──────────────────────────────────
+// READS: —  WRITES: STATE, calls loadObs
+function bindFilterGroup(containerId, stateKey) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  container.addEventListener('click', function(e) {
+    var btn = e.target.closest('.fb');
+    if (!btn) return;
+    container.querySelectorAll('.fb').forEach(function(b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    STATE[stateKey] = btn.getAttribute('data-v');
+    STATE.offset = 0;
+    loadObs(true);
+  });
+}
+
+// ── Boot ──────────────────────────────────────────────────
+function boot() {
+  // READS: —  WRITES: STATE, DOM event listeners
+
+  // Bind filter groups
+  bindFilterGroup('domainBtns',  'domain');
+  bindFilterGroup('realmBtns',   'realm');
+  bindFilterGroup('scaleBtns',   'scale');
+  bindFilterGroup('mediumBtns',  'medium');
+
+  // Flag toggles
+  document.getElementById('evidBtn').addEventListener('click', function() {
+    STATE.evidOnly = !STATE.evidOnly;
+    this.className = 'fb' + (STATE.evidOnly ? ' on-evid' : '');
+    STATE.offset = 0;
+    loadObs(true);
+  });
+  document.getElementById('alrtBtn').addEventListener('click', function() {
+    STATE.alrtOnly = !STATE.alrtOnly;
+    this.className = 'fb' + (STATE.alrtOnly ? ' on-alrt' : '');
+    STATE.offset = 0;
+    loadObs(true);
+  });
+
+  // Search with debounce
+  var searchTimer;
+  document.getElementById('searchInput').addEventListener('input', function() {
+    clearTimeout(searchTimer);
+    var val = this.value.trim();
+    searchTimer = setTimeout(function() {
+      STATE.search = val;
+      STATE.offset = 0;
+      loadObs(true);
+    }, 380);
+  });
+
+  // Sort select
+  document.getElementById('sortSel').addEventListener('change', function() {
+    STATE.sort = this.value;
+    STATE.offset = 0;
+    loadObs(true);
+  });
+
+  // Load more
+  document.getElementById('loadMoreBtn').addEventListener('click', function() {
+    loadObs(false);
+  });
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('on'); });
+      document.querySelectorAll('.tab-pane').forEach(function(p) { p.classList.remove('on'); });
+      tab.classList.add('on');
+      var pane = document.getElementById('pane-' + tab.getAttribute('data-pane'));
+      if (pane) pane.classList.add('on');
+      // Lazy load pane data
+      var p = tab.getAttribute('data-pane');
+      if (p === 'evid') loadEvid();
+      if (p === 'rels') loadRels();
+      if (p === 'ents') loadEnts();
+    });
+  });
+
+  // Initial data loads
+  loadStats();
+  loadSources();
+  loadObs(true);
+
+  // Refresh stats every 5 minutes (registry is live)
+  setInterval(loadStats, 300000);
+}
+
+document.addEventListener('DOMContentLoaded', boot);
+</script>
+
+</body>
+</html>
